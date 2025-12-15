@@ -1,0 +1,151 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: imageprocessor-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: imagedb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - imageprocessor-network
+
+  redis:
+    image: redis:alpine
+    container_name: imageprocessor-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - imageprocessor-network
+
+  minio:
+    image: minio/minio
+    container_name: imageprocessor-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - imageprocessor-network
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: imageprocessor-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - imageprocessor-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: imageprocessor-keycloak
+    ports:
+      - "8080:8080"
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - imageprocessor-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: imageprocessor-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      POSTGRES_URL: "postgres://postgres:postgres@postgres:5432/imagedb?sslmode=disable"
+      REDIS_URL: "redis:6379"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      KEYCLOAK_URL: "http://keycloak:8080"
+      KEYCLOAK_REALM: "ImageProcessor"
+      KEYCLOAK_CLIENT_ID: "api-gateway-client"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - imageprocessor-network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: imageprocessor-worker
+    environment:
+      POSTGRES_URL: "postgres://postgres:postgres@postgres:5432/imagedb?sslmode=disable"
+      REDIS_URL: "redis:6379"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+    networks:
+      - imageprocessor-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+
+
+networks:
+  imageprocessor-network:
+    driver: bridge
