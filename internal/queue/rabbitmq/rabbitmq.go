@@ -71,6 +71,35 @@ func (c *Client) Publish(body []byte) error {
 	return nil
 }
 
+// Consume starts consuming messages from the queue
+func (c *Client) Consume() (<-chan amqp.Delivery, error) {
+	// Set QoS to limit number of unacknowledged messages
+	err := c.channel.Qos(
+		5,     // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set QoS: %w", err)
+	}
+
+	msgs, err := c.channel.Consume(
+		QueueName, // queue
+		"",        // consumer tag
+		false,     // auto-ack
+		false,     // exclusive
+		false,     // no-local
+		false,     // no-wait
+		nil,       // args
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register consumer: %w", err)
+	}
+
+	log.Printf("Started consuming messages from queue: %s", QueueName)
+	return msgs, nil
+}
+
 // Close closes the channel and connection
 func (c *Client) Close() error {
 	if c.channel != nil {

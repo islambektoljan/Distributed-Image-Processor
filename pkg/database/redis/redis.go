@@ -51,6 +51,15 @@ func (c *Client) Set(ctx context.Context, key string, value interface{}, expirat
 	return nil
 }
 
+// Delete removes a key from Redis
+func (c *Client) Delete(ctx context.Context, key string) error {
+	err := c.client.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete key: %w", err)
+	}
+	return nil
+}
+
 // Close closes the Redis connection
 func (c *Client) Close() error {
 	return c.client.Close()

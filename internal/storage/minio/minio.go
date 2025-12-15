@@ -81,3 +81,13 @@ func (c *Client) GetFileLink(ctx context.Context, bucketName, objectName string,
 
 	return presignedURL.String(), nil
 }
+
+// DownloadFile downloads a file from the specified bucket
+func (c *Client) DownloadFile(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error) {
+	object, err := c.client.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to download file: %w", err)
+	}
+
+	return object, nil
+}
