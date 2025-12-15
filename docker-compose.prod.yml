@@ -58,10 +58,10 @@ services:
       - "5672:5672"
       - "15672:15672"
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
-      interval: 10s
+      test: [ "CMD", "sh", "-c", "rabbitmq-diagnostics ping && rabbitmq-diagnostics check_port_listener 5672 || exit 1" ]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
       - imageprocessor-network
 
@@ -72,14 +72,8 @@ services:
       - "8080:8080"
     command: start-dev
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ready" ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 40s
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     networks:
       - imageprocessor-network
 
@@ -89,10 +83,11 @@ services:
     user: root
     volumes:
       - ./scripts/setup_keycloak.sh:/scripts/setup_keycloak.sh
-    command: [ "/bin/bash", "/scripts/setup_keycloak.sh" ]
+    entrypoint: [ "/bin/bash" ]
+    command: [ "-c", "/scripts/setup_keycloak.sh" ]
     depends_on:
       keycloak:
-        condition: service_healthy
+        condition: service_started
     networks:
       - imageprocessor-network
     restart: "no"
@@ -126,7 +121,7 @@ services:
       setup-keycloak:
         condition: service_completed_successfully
       keycloak:
-        condition: service_healthy
+        condition: service_started
     networks:
       - imageprocessor-network
     restart: unless-stopped

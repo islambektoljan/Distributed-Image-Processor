@@ -1,3 +1,7 @@
-FROM alpine/curl
+FROM quay.io/keycloak/keycloak:latest
 
-ENTRYPOINT ["/bin/bash"]
+WORKDIR /scripts
+
+COPY scripts/setup_keycloak.sh .
+
+ENTRYPOINT ["/bin/sh", "-c", "./setup_keycloak.sh && exit 0"]
