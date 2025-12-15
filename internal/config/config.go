@@ -5,13 +5,15 @@ import (
 )
 
 type Config struct {
-	PostgresURL    string `envconfig:"POSTGRES_URL" default:"postgres://postgres:postgres@127.0.0.1:5433/imagedb?sslmode=disable"`
-	RedisURL       string `envconfig:"REDIS_URL" default:"localhost:6379"`
-	MinioEndpoint  string `envconfig:"MINIO_ENDPOINT" default:"localhost:9000"`
-	MinioAccessKey string `envconfig:"MINIO_ACCESS_KEY" default:"minioadmin"`
-	MinioSecretKey string `envconfig:"MINIO_SECRET_KEY" default:"minioadmin"`
-	RabbitMQURL    string `envconfig:"RABBITMQ_URL" default:"amqp://guest:guest@localhost:5672/"`
-	KeycloakURL    string `envconfig:"KEYCLOAK_URL" default:"http://localhost:8080"`
+	PostgresURL      string `envconfig:"POSTGRES_URL" default:"postgres://postgres:postgres@127.0.0.1:5433/imagedb?sslmode=disable"`
+	RedisURL         string `envconfig:"REDIS_URL" default:"localhost:6379"`
+	MinioEndpoint    string `envconfig:"MINIO_ENDPOINT" default:"localhost:9000"`
+	MinioAccessKey   string `envconfig:"MINIO_ACCESS_KEY" default:"minioadmin"`
+	MinioSecretKey   string `envconfig:"MINIO_SECRET_KEY" default:"minioadmin"`
+	RabbitMQURL      string `envconfig:"RABBITMQ_URL" default:"amqp://guest:guest@localhost:5672/"`
+	KeycloakURL      string `envconfig:"KEYCLOAK_URL" default:"http://localhost:8080"`
+	KeycloakRealm    string `envconfig:"KEYCLOAK_REALM" default:"ImageProcessor"`
+	KeycloakClientID string `envconfig:"KEYCLOAK_CLIENT_ID" default:"api-gateway-client"`
 }
 
 func LoadConfig() (*Config, error) {

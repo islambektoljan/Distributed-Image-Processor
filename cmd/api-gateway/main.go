@@ -15,6 +15,7 @@ import (
 	minioclient "image-processor/internal/storage/minio"
 	"image-processor/pkg/database/postgres"
 	redisclient "image-processor/pkg/database/redis"
+	"image-processor/pkg/security"
 
 	"github.com/gin-gonic/gin"
 )
@@ -76,8 +77,21 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
-	// API routes
+	// Health check endpoint (unprotected)
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "healthy",
+			"service": "api-gateway",
+		})
+	})
+
+	// Keycloak middleware setup
+	jwksURL := cfg.KeycloakURL + "/realms/" + cfg.KeycloakRealm + "/protocol/openid-connect/certs"
+	authMiddleware := security.AuthMiddleware(jwksURL, cfg.KeycloakClientID)
+
+	// Protected API routes
 	v1 := router.Group("/api/v1")
+	v1.Use(authMiddleware)
 	{
 		v1.POST("/upload", h.UploadImage)
 		v1.GET("/images/:id", h.GetImage)
