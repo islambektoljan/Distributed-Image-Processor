@@ -51,18 +51,41 @@ $KCADM create clients \
   -s 'redirectUris=["http://localhost:3000/*"]' \
   -s 'webOrigins=["*"]'
 
-# Create test user
-echo "Creating test user 'user'..."
-$KCADM create users \
-  -r ImageProcessor \
-  -s username=user \
-  -s enabled=true
+# ------------------------------
+# User Creation and Password Setup
+# ------------------------------
 
-# Set password for test user
+# 1. Create test user and capture its ID from the output message.
+echo "Creating test user 'user' and capturing ID..."
+
+USER_CREATE_OUTPUT=$($KCADM create users -r ImageProcessor -s username=user -s enabled=true 2>&1)
+USER_ID=$(echo "$USER_CREATE_OUTPUT" | grep "id '" | cut -d "'" -f 2)
+  
+if [ -z "$USER_ID" ]; then
+    echo "Failed to create user or retrieve ID from output. Exiting."
+    echo "Raw output of 'kcadm create users': $USER_CREATE_OUTPUT"
+    exit 1
+fi
+echo "Successfully created and retrieved user ID: $USER_ID"
+
+# 2. Set password for test user
 echo "Setting password for user..."
 $KCADM set-password \
   -r ImageProcessor \
   --username user \
-  --new-password password
+  --new-password password 
+
+# 3. Explicitly remove all required actions
+echo "Manually forcing removal of all required actions for the test user to prevent invalid_grant..."
+$KCADM update users/$USER_ID -r ImageProcessor -s 'requiredActions=[]'
+
+echo "Forcing Keycloak to clear realm, user, and keys caches using kcadm create..."
+
+$KCADM create clear-realm-cache -r ImageProcessor -s realm=ImageProcessor
+$KCADM create clear-user-cache -r ImageProcessor -s realm=ImageProcessor
+$KCADM create clear-keys-cache -r ImageProcessor -s realm=ImageProcessor
+
+echo "Adding final sleep (5s) for stability..."
+sleep 5
 
 echo "Keycloak configuration completed successfully!"
