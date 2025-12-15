@@ -3,15 +3,20 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"image-processor/internal/config"
+	"image-processor/internal/handler"
 	"image-processor/internal/queue/rabbitmq"
 	minioclient "image-processor/internal/storage/minio"
 	"image-processor/pkg/database/postgres"
+	redisclient "image-processor/pkg/database/redis"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -41,7 +46,7 @@ func main() {
 
 	// Initialize Minio
 	log.Println("Connecting to Minio...")
-	_, err = minioclient.NewClient(cfg.MinioEndpoint, cfg.MinioAccessKey, cfg.MinioSecretKey, false)
+	minioClient, err := minioclient.NewClient(cfg.MinioEndpoint, cfg.MinioAccessKey, cfg.MinioSecretKey, false)
 	if err != nil {
 		log.Fatalf("Failed to connect to Minio: %v", err)
 	}
@@ -54,7 +59,43 @@ func main() {
 	}
 	defer rabbitClient.Close()
 
-	log.Println("✓ Successfully connected to Minio and RabbitMQ")
+	// Initialize Redis
+	log.Println("Connecting to Redis...")
+	redisClient, err := redisclient.NewClient(cfg.RedisURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	defer redisClient.Close()
+
+	log.Println("✓ Successfully connected to all services")
+
+	// Initialize handler
+	h := handler.NewHandler(pgPool, minioClient, rabbitClient, redisClient)
+
+	// Setup Gin router
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+
+	// API routes
+	v1 := router.Group("/api/v1")
+	{
+		v1.POST("/upload", h.UploadImage)
+		v1.GET("/images/:id", h.GetImage)
+	}
+
+	// Start HTTP server in a goroutine
+	srv := &http.Server{
+		Addr:    ":3000",
+		Handler: router,
+	}
+
+	go func() {
+		log.Println("Starting HTTP server on :3000")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
 	log.Println("API Gateway is running. Press Ctrl+C to exit.")
 
 	// Wait for interrupt signal
@@ -63,4 +104,14 @@ func main() {
 	<-sigChan
 
 	log.Println("Shutting down gracefully...")
+
+	// Graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server stopped")
 }

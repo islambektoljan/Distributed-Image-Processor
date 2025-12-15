@@ -6,7 +6,7 @@ import (
 
 type Config struct {
 	PostgresURL    string `envconfig:"POSTGRES_URL" default:"postgres://postgres:postgres@127.0.0.1:5433/imagedb?sslmode=disable"`
-	RedisURL       string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
+	RedisURL       string `envconfig:"REDIS_URL" default:"localhost:6379"`
 	MinioEndpoint  string `envconfig:"MINIO_ENDPOINT" default:"localhost:9000"`
 	MinioAccessKey string `envconfig:"MINIO_ACCESS_KEY" default:"minioadmin"`
 	MinioSecretKey string `envconfig:"MINIO_SECRET_KEY" default:"minioadmin"`
