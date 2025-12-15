@@ -1,0 +1,3 @@
+FROM alpine/curl
+
+ENTRYPOINT ["/bin/bash"]
