@@ -42,18 +42,37 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Validate file type
-	contentType := header.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "image/jpeg") && !strings.HasPrefix(contentType, "image/png") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Only JPEG and PNG files are allowed"})
-		return
-	}
-
-	// Validate file extension
+	// Validate file extension first
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Only .jpg, .jpeg, and .png extensions are allowed"})
 		return
+	}
+
+	// Validate file type from Content-Type header
+	contentType := header.Header.Get("Content-Type")
+
+	// If Content-Type is missing or invalid, determine it from extension
+	if contentType == "" {
+		switch ext {
+		case ".jpg", ".jpeg":
+			contentType = "image/jpeg"
+		case ".png":
+			contentType = "image/png"
+		}
+	}
+
+	// Validate Content-Type matches allowed types
+	if !strings.HasPrefix(contentType, "image/jpeg") && !strings.HasPrefix(contentType, "image/png") {
+		// If Content-Type doesn't match but extension is valid, use extension-based type
+		if ext == ".jpg" || ext == ".jpeg" {
+			contentType = "image/jpeg"
+		} else if ext == ".png" {
+			contentType = "image/png"
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Only JPEG and PNG files are allowed"})
+			return
+		}
 	}
 
 	// Generate UUID for image

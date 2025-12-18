@@ -76,6 +76,11 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
+	// Metrics endpoint (unprotected) - простой эндпоинт для Prometheus
+	router.GET("/metrics", func(c *gin.Context) {
+		c.String(http.StatusOK, "# API Gateway Metrics\n# This is a placeholder metrics endpoint\n")
+	})
+
 	// API routes
 	v1 := router.Group("/api/v1")
 	{
