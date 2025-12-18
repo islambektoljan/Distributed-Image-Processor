@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Development files
+.env
+*.md
+docs/
+scripts/
+
+# Build artifacts
+bin/
+tmp/
+/data
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+*_test.go
+testdata/

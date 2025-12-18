@@ -1,0 +1,7 @@
+FROM quay.io/keycloak/keycloak:latest
+
+WORKDIR /scripts
+
+COPY scripts/setup_keycloak.sh .
+
+ENTRYPOINT ["/bin/sh", "-c", "./setup_keycloak.sh && exit 0"]
